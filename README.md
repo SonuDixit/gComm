@@ -5,13 +5,15 @@ gComm is a step towards developing a robust platform to foster research in groun
 
 ## Table of contents
 * [General info](#general-info)
+* [Getting Started](#getting-started)
 * [Baselines](#baselines)
 * [Levels](#levels)
 * [Metrics](#metrics)
+* [Publications](#publications)
 
 This repository contains the code for the environment, including the baselines and metrics.
 
-## Setup
+## Getting Started
 To run this project,
 
 ```
@@ -19,3 +21,10 @@ $ cd ../lorem
 $ npm install
 $ npm start
 ```
+
+## Publications
+[1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](). In NAACL 2021 Workshop: ViGIL.
+
+[2] Rishi Hazra, Sonu Dixit, and Sayambhu Sen, 2021. ["Zero-Shot Generalization using Intrinsically Motivated Compositional Emergent Protocols"](). In NAACL 2021 Workshop: ViGIL
+
+[3] Rishi Hazra, Sonu Dixit, and Sayambhu Sen, 2020. ["*Infinite use of finite means*: Zero-Shot Generalization using Compositional Emergent Protocols"](https://arxiv.org/pdf/2012.05011.pdf).
