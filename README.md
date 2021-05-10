@@ -22,6 +22,13 @@ $ npm install
 $ npm start
 ```
 
+## Baselines
+| Tables        | Are           | Cool  |
+| ------------- |:-------------:| -----:|
+| col 3 is      | right-aligned | $1600 |
+| col 2 is      | centered      |   $12 |
+| zebra stripes | are neat      |    $1 |
+
 ## Publications
 [1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](). In NAACL 2021 Workshop: ViGIL.
 
