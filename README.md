@@ -17,17 +17,26 @@ This repository contains the code for the environment, including the baselines a
 To run this project,
 
 ```
-$ cd ../lorem
-$ npm install
-$ npm start
+$ git clone https://github.com/SonuDixit/gComm.git
+$ python setup.py install
 ```
 
 ## Baselines
-| Tables        | Are           | Cool  |
-| ------------- |:-------------:| -----:|
-| col 3 is      | right-aligned | $1600 |
-| col 2 is      | centered      |   $12 |
-| zebra stripes | are neat      |    $1 |
+| Task              | Baseline         | Convergence Rewards  |
+|:-----------------:|:----------------:|:--------------------:|
+|                   | Simple Speaker   |   0.80               |
+|                   | Random Speaker   |   0.40               |
+|  **Walk**         | Fixed Speaker    |   0.43               |
+|                   | Perfect Speaker  |   0.95               |
+|                   | Oracle Listener  |   0.99               |
+|                   |                  |                      |
+|                   | Simple Speaker   |   0.70               |
+|                   | Random Speaker   |   0.19               |
+|**Push** & **Pull**| Fixed Speaker    |   0.15               |
+|                   | Perfect Speaker  |   0.85               |
+|                   | Oracle Listener  |   0.90               |
+|                   |                  |                      |
+
 
 ## Publications
 [1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](https://arxiv.org/pdf/2105.03943.pdf). In NAACL 2021 Workshop: ViGIL.
