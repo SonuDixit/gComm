@@ -8,7 +8,8 @@ gComm is a step towards developing a robust platform to foster research in groun
 ## Table of contents
 * [General info](#general-info)
 * [Getting Started](#getting-started)
-* [Baselines](#baselines)
+* [Baselines](#baselines)* 
+* [Communication Channel](#communication-channel)
 * [Levels](#levels)
 * [Metrics](#metrics)
 * [Additional Features](#additional-features)
@@ -84,6 +85,9 @@ $ python  # push and pull
 $ python  # walk
 $ python  # push and pull
 ```
+
+## Communication Channel
+`use_comm_channel`, `comm_type`
 
 ## Levels
 <p align="center">
