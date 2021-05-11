@@ -30,7 +30,7 @@ $ npm start
 | zebra stripes | are neat      |    $1 |
 
 ## Publications
-[1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](). In NAACL 2021 Workshop: ViGIL.
+[1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](https://arxiv.org/pdf/2105.03943.pdf). In NAACL 2021 Workshop: ViGIL.
 
 [2] Rishi Hazra, Sonu Dixit, and Sayambhu Sen, 2021. ["Zero-Shot Generalization using Intrinsically Motivated Compositional Emergent Protocols"](). In NAACL 2021 Workshop: ViGIL
 
