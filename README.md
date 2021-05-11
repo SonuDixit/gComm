@@ -61,19 +61,23 @@ To run each baseline:
 
 * **Random Speaker**
 ```
-$ python 
+$ python  # walk
+$ python  # push and pull
 ```
 * **Fixed Speaker**
 ```
-$ python 
+$ python  # walk
+$ python  # push and pull
 ```
 * **Perfect Speaker**
 ```
-$ python 
+$ python  # walk
+$ python  # push and pull
 ```
 * **Oracle Listener**
 ```
-$ python 
+$ python  # walk
+$ python  # push and pull
 ```
 
 ## Levels
