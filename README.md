@@ -79,6 +79,7 @@ $ python
 ## Levels
 <p align="center">
   <img src="https://user-images.githubusercontent.com/36856187/117788916-1f73bc00-b248-11eb-8484-e810a6d88591.png" width="300" alt="obstacles-grid"/>
+  ⋅⋅⋅⋅⋅⋅
   <img src="https://user-images.githubusercontent.com/36856187/117788200-74630280-b247-11eb-9018-4b03a6c6ab76.png" width="300" height="375" alt="maze-grid"/>
 </p>
 
@@ -96,6 +97,6 @@ Set `lights_out` argument to True
 ## Publications
 [1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](https://arxiv.org/pdf/2105.03943.pdf). In NAACL 2021 Workshop: ViGIL.
 
-[2] Rishi Hazra, Sonu Dixit, and Sayambhu Sen, 2021. ["Zero-Shot Generalization using Intrinsically Motivated Compositional Emergent Protocols"](). In NAACL 2021 Workshop: ViGIL.
+[2] Rishi Hazra*, Sonu Dixit*, and Sayambhu Sen, 2021. ["Zero-Shot Generalization using Intrinsically Motivated Compositional Emergent Protocols"](). In NAACL 2021 Workshop: ViGIL.
 
 [3] Rishi Hazra, Sonu Dixit, and Sayambhu Sen, 2020. ["*Infinite use of finite means*: Zero-Shot Generalization using Compositional Emergent Protocols"](https://arxiv.org/pdf/2012.05011.pdf).
