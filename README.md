@@ -41,6 +41,11 @@ Arguments can be found in the file: gComm/arguments.py
 `all_light`
 `keep_fixed_weights`
 
+* RL-framework
+`num_episodes`
+`episode_len`
+`grid_input_type`
+
 
 ## Baselines
 | Task              | Baseline         | Convergence Rewards  |
