@@ -8,8 +8,7 @@ gComm is a step towards developing a robust platform to foster research in groun
 ## Table of contents
 * [General info](#general-info)
 * [Getting Started](#getting-started)
-* [Baselines](#baselines)* 
-* [Communication Channel](#communication-channel)
+* [Baselines](#baselines)
 * [Levels](#levels)
 * [Metrics](#metrics)
 * [Additional Features](#additional-features)
@@ -46,6 +45,9 @@ Arguments can be found in the file: gComm/arguments.py
 `num_episodes`
 `episode_len`
 `grid_input_type`
+
+* Communication Channel
+`use_comm_channel`, `comm_type`
 
 
 ## Baselines
@@ -85,9 +87,6 @@ $ python  # push and pull
 $ python  # walk
 $ python  # push and pull
 ```
-
-## Communication Channel
-`use_comm_channel`, `comm_type`
 
 ## Levels
 <p align="center">
