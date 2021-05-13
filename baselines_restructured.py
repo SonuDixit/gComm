@@ -1,0 +1,309 @@
+"""
+baselines:
+        Random, Fixed, Perfect, Oracle, Simple
+
+Actions:
+        left = 0
+        right = 1
+        forward = 2
+        backward = 3
+        push = 4
+        pull = 5
+        pickup = 6
+        drop = 7
+"""
+
+from gComm.arguments import Arguments
+from gComm.gComm_env import gCommEnv
+from gComm.models import SpeakerBot, TargetEncoder, GridEncoder, ListenerBot
+from gComm.agents_modified import CommChannel, SpeakerAgent, ListenerAgent
+from gComm.helpers import action_IND_to_STR, generate_task_progress
+
+import os
+from pathlib import Path
+import numpy as np
+import torch
+import torch.optim as optim
+from torch.distributions import Categorical
+
+SAVE_FIG = False  # save test episodes?
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+flags = Arguments()
+
+GAMMA = 0.9  # discount rate
+LAMBDA = 0.01  # hyper parameter for entropy
+num_msgs = 3  # n_m of the communication channel
+# d_m of the communication channel
+if flags['comm_type'] == 'binary':
+    msg_len = 2  # (binary)
+else:
+    msg_len = 4  # (categorical or others)
+
+# number of actions by Listener-Bot
+num_actions = 4
+if flags['type_grammar'] == 'simple_trans':
+    num_actions += len(flags['transitive_verbs'].split(','))
+
+# ======================= Data storage paths ========================== #
+run_id = 1
+path = os.path.join(os.getcwd(), flags['comm_type'] + "_speaker_data/") + "run_" + str(run_id) + "/"
+model_load_path = Path(path + "checkpoint_dir")
+plot_path = Path(path + "plots")
+model_load_path.mkdir(exist_ok=True, parents=True)
+plot_path.mkdir(exist_ok=True, parents=True)
+log_file = open(path + "log.txt", "w")
+log_file.write(str(flags) + '\n')
+visualization_path = None
+
+# random.seed(104)
+# np.random.seed(104)
+
+
+# ========================== REINFORCE =========================== #
+def policy_gradient(grid_representation, validate=False):
+    policy_logits = all_vars['listener_bot'](grid_representation)
+    policy_dist = torch.softmax(policy_logits, dim=-1)
+
+    if validate:
+        action = torch.argmax(policy_dist, dim=1)
+    else:
+        action = Categorical(probs=policy_dist).sample()
+
+    # action_freq[action_IND_to_STR(action.item())] += 1
+    log_prob = Categorical(probs=policy_dist).log_prob(action)
+    entropy = -(torch.log(policy_dist + 1e-8) * policy_dist).sum()
+    # reward, done = environment_step(action=action.item())
+    return log_prob, entropy, action_IND_to_STR(action.item())
+
+
+# =======================Save Models======================== #
+def save_models(iteration):
+    for model_name, model in all_vars.items():
+        if model_name in ['target_encoder', 'grid_encoder', 'listener_bot']:
+            with open(os.path.join(model_load_path, str(iteration) + '_' + model_name), 'wb') as f:
+                torch.save(model.state_dict(), f)
+
+
+def single_loop(env, validation=False):
+    instruction, verb_in_command = env.generate_world(
+        other_objects_sample_percentage=flags['other_objects_sample_percentage'],
+        max_other_objects=flags['max_objects'],
+        min_other_objects=flags['min_other_objects'],
+        num_obstacles=flags['num_obstacles'])
+
+    # concept input (encoded instruction and target information)
+    concept_representation, weight = env.concept_input(verb_in_command)
+
+    actions = ''
+    log_probs = []
+    rewards = []
+    entropy_term = torch.tensor(0.).to(DEVICE)
+
+    # speaker model processes instruction based on baseline specification
+    if flags['comm_type'] == 'fixed':
+        speaker_out = comm_channel.fixed()
+    elif flags['comm_type'] == 'random':
+        speaker_out = comm_channel.random()
+    elif flags['comm_type'] == 'perfect':
+        speaker_out = comm_channel.perfect(concept_representation=concept_representation)
+    elif flags['comm_type'] == 'oracle':
+        pass
+    else:  # simple speaker
+        speaker_concept_input = torch.tensor(concept_representation[:12],
+                                             dtype=torch.float32).unsqueeze(0).to(DEVICE)
+        speaker_out, _, _ = all_vars['speaker_bot'](speaker_concept_input, validation=validation)
+        speaker_out = speaker_out.contiguous().view(1, -1)
+
+    # time-steps
+    for t in range(flags["episode_len"]):
+
+        # grid input
+        if flags["grid_input_type"] == "image":
+            grid_representation = env.grid_image_input()  # [img_height, img_width, 3]
+        elif flags["grid_input_type"] == "vector":
+            grid_vector_size = 17
+            grid_representation = env.grid_input()  # [grid_height, grid_width, num_channels]
+            grid_representation = torch.tensor(grid_representation,
+                                               dtype=torch.float32).contiguous().view(1,
+                                                                                      flags["grid_size"] ** 2,
+                                                                                      grid_vector_size).to(DEVICE)
+        # baseline: ORACLE LISTENER
+        elif flags["grid_input_type"] == "with_target":
+            grid_representation = \
+                env.grid_input(specify_target=True)  # [grid_height, grid_width, num_channels+1]
+            grid_vector_size = 18
+            grid_representation = torch.tensor(grid_representation,
+                                               dtype=torch.float32).contiguous().view(1,
+                                                                                      flags["grid_size"] ** 2,
+                                                                                      grid_vector_size).to(DEVICE)
+
+        if flags["grid_input_type"] != "with_target":
+            grid_representation = all_vars['target_encoder'](speaker_out, grid_representation)
+        else:
+            grid_representation = \
+                grid_representation.contiguous().permute(2, 0, 1).unsqueeze(0)  # [1, 18, 4, 4]
+        listener_state = all_vars['grid_encoder'](grid_representation)
+
+        # render each step of the episode
+        if flags['render_episode']:
+            env.render_episode(mission=instruction,
+                               countdown=(flags["episode_len"] - t),
+                               actions=actions,
+                               weight=weight,
+                               verb_in_command=verb_in_command,
+                               save_path=visualization_path,
+                               save_fig=False)
+
+        # action by policy
+        log_prob, entropy, action = policy_gradient(listener_state)
+
+        # reward at each time-step;
+        # done flag indicates whether the task was completed
+        reward, done = env.step(action)
+        actions += action + ' '
+
+        rewards.append(reward)
+        log_probs.append(log_prob.squeeze(0))
+        entropy_term += entropy
+
+        if done:
+            # render each step of the episode
+            if flags['render_episode']:
+                env.render_episode(mission=instruction,
+                                   countdown=(flags["episode_len"] - t - 1),
+                                   actions=actions,
+                                   weight=weight,
+                                   verb_in_command=verb_in_command,
+                                   save_path=visualization_path,
+                                   save_fig=SAVE_FIG)
+            Qval = torch.tensor(0., device=DEVICE)
+            break
+
+    if validation:
+        return np.array(rewards).sum()
+
+    train_rewards = torch.tensor(rewards).to(DEVICE)
+    Qvals = []
+    for t in reversed(range(len(rewards))):
+        Qval = train_rewards[t] + GAMMA * Qval
+        Qvals.insert(0, Qval)
+
+    Qvals = torch.stack(Qvals)
+    log_probs = torch.stack(log_probs)
+    advantage = Qvals.detach()
+
+    agent_loss = (-log_probs * advantage.detach()).mean()
+    net_loss = agent_loss - LAMBDA * entropy_term
+    return net_loss, train_rewards
+
+
+def main():
+    # Create directory for visualizations if it doesn't exist.
+    flags['output_directory'] = os.path.join(os.getcwd(), flags['output_directory'])
+    if flags['output_directory']:
+        visualization_path = flags['output_directory']
+        if not os.path.exists(visualization_path):
+            os.mkdir(visualization_path)
+
+    # initializing the vocabulary
+    intransitive_verbs = flags["intransitive_verbs"].split(',')
+    transitive_verbs = flags["transitive_verbs"].split(',')
+    nouns = flags["nouns"].split(',')
+    color_adjectives = flags["color_adjectives"].split(',') if flags["color_adjectives"] else []
+    size_adjectives = flags["size_adjectives"].split(',') if flags["size_adjectives"] else []
+
+    # initializing the environment
+    env = gCommEnv(
+        intransitive_verbs=intransitive_verbs, transitive_verbs=transitive_verbs, nouns=nouns,
+        color_adjectives=color_adjectives, size_adjectives=size_adjectives,
+        min_object_size=flags["min_object_size"], max_object_size=flags["max_object_size"],
+        save_directory=flags["output_directory"], grid_size=flags["grid_size"],
+        type_grammar=flags["type_grammar"], maze_complexity=flags["maze_complexity"],
+        maze_density=flags["maze_density"], enable_maze=flags["enable_maze"],
+        lights_out=flags["lights_out"], obstacles_flag=flags['obstacles_flag'],
+        keep_fixed_weights=flags["keep_fixed_weights"], all_light=flags['all_light'],
+        episode_len=flags["episode_len"], wait=flags['wait_time'])
+
+    # generating episodes
+    task_rewards = {"'walk'": []}
+    for Episode_count in range(1, flags["num_episodes"] + 1):
+        # ==================== Train =================== #
+        if flags['use_comm_channel'] is True:
+            all_vars['speaker_bot'].train(True)
+        all_vars['target_encoder'].train(True)
+        all_vars['grid_encoder'].train(True)
+        all_vars['listener_bot'].train(True)
+        all_vars['optimizer'].zero_grad()
+        # run a single training loop
+        net_loss, train_rewards = single_loop(env, validation=False)
+        net_loss.backward()
+        all_vars['optimizer'].step()
+        # print('episode: {} | train-reward: {} | train-loss: {}'.format(Episode_count,
+        #                                                                train_rewards[-1].item(), net_loss))
+
+        # ==================== validation ====================== #
+        if Episode_count % 500 == 0:
+            val_rewards = 0
+            num_val_iter = 30  # number of validation loops/episodes to be run
+            if flags['use_comm_channel'] is True:
+                all_vars['speaker_bot'].eval()
+            all_vars['target_encoder'].eval()
+            all_vars['grid_encoder'].eval()
+            all_vars['listener_bot'].eval()
+            with torch.no_grad():
+                for _ in range(num_val_iter):
+                    val_reward = single_loop(env, validation=True)
+                    val_rewards += val_reward / num_val_iter
+            print('episode: {} | val-reward: {}'.format(Episode_count, val_rewards))
+            task_rewards["'walk'"].extend([val_rewards])
+
+        # ========================== Plot ============================= #
+        if Episode_count % 2000 == 0 and Episode_count != 0:
+            print('------------------Generating plots------------------------')
+            generate_task_progress(task_reward_dict=task_rewards, color='m', interval=100,
+                                   file_name=os.path.join(plot_path, 'task_progress.png'))
+
+        # =====================save model====================== #
+        # if Episode_count % 2000 == 0:
+        #     print('------------------Saving model checkpoint------------------\n')
+        #     save_models(iteration=Episode_count)
+
+        log_file.write('Episode: ' + str(Episode_count) + ' | Train Reward: ' + str(train_rewards) +
+                       ' | Train Loss: ' + str(net_loss) + "\n")
+
+        log_file.flush()
+
+
+if __name__ == "__main__":
+    # =================initialize model params and environment============== #
+
+    # ================== Listener-Bot ====================== #
+    target_encoder = TargetEncoder(grid_size=flags['grid_size'], num_msgs=num_msgs, message_len=msg_len).to(DEVICE)
+    grid_encoder = GridEncoder(in_channels=18, out_channels=20).to(DEVICE)
+    listener_bot = ListenerBot(input_dim=320, hidden_dim1=150, hidden_dim2=30, num_actions=num_actions).to(DEVICE)
+    listener_agent = ListenerAgent(listener_model=listener_bot)
+    comm_channel = CommChannel(msg_len=msg_len, num_msgs=num_msgs, comm_type=flags['comm_type'],
+                               temp=None, device=DEVICE)
+
+    all_params = list(grid_encoder.parameters()) + \
+                 list(target_encoder.parameters()) + \
+                 list(listener_agent.listener_model.parameters())
+
+    # ================== Speaker-Bot ====================== #
+    if flags['use_comm_channel'] is True:
+        speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=4,
+                                 output_size=msg_len, num_msgs=num_msgs, temp=flags['temp'], device=DEVICE).to(DEVICE)
+
+        speaker_agent = SpeakerAgent(speaker_model=speaker_bot)
+        all_params.extend(list(speaker_agent.speaker_model.parameters()))
+
+    optimizer = optim.Adam(all_params, lr=4e-4)
+
+    all_vars = {'target_encoder': target_encoder, 'grid_encoder': grid_encoder,
+                'listener_agent': listener_agent, 'optimizer': optimizer}
+    if flags['use_comm_channel'] is True:
+        all_vars['speaker_agent'] = speaker_agent
+
+    main()
+
+    log_file.close()
