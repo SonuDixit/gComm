@@ -1,0 +1,10 @@
+gym>=0.9.6
+numpy>=1.18.1
+pyqt5>=5.10.1
+torch>=0.4.1
+matplotlib
+pronounceable
+six
+regex
+pandas
+gym_minigrid@ https://github.com/maximecb/gym-minigrid/archive/master.zip

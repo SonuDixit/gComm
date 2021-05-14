@@ -1,6 +1,6 @@
 """
 baselines:
-        Random, Fixed, Perfect, Oracle, Simple
+        Random, Fixed, Perfect, Oracle, Simple (Categorical)
 
 Actions:
         left = 0
@@ -15,16 +15,15 @@ Actions:
 
 from gComm.arguments import Arguments
 from gComm.gComm_env import gCommEnv
-from gComm.models import SpeakerBot, TargetEncoder, GridEncoder, ListenerBot
-from gComm.agents_modified import CommChannel, SpeakerAgent, ListenerAgent
-from gComm.helpers import action_IND_to_STR, generate_task_progress
+from baseline_models import SpeakerBot, ListenerBot
+from gComm.agent import SpeakerAgent, ListenerAgent
+from gComm.helpers import generate_task_progress
 
 import os
 from pathlib import Path
 import numpy as np
 import torch
 import torch.optim as optim
-from torch.distributions import Categorical
 
 SAVE_FIG = False  # save test episodes?
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,26 +54,6 @@ log_file = open(path + "log.txt", "w")
 log_file.write(str(flags) + '\n')
 visualization_path = None
 
-# random.seed(104)
-# np.random.seed(104)
-
-
-# ========================== REINFORCE =========================== #
-def policy_gradient(grid_representation, validate=False):
-    policy_logits = all_vars['listener_bot'](grid_representation)
-    policy_dist = torch.softmax(policy_logits, dim=-1)
-
-    if validate:
-        action = torch.argmax(policy_dist, dim=1)
-    else:
-        action = Categorical(probs=policy_dist).sample()
-
-    # action_freq[action_IND_to_STR(action.item())] += 1
-    log_prob = Categorical(probs=policy_dist).log_prob(action)
-    entropy = -(torch.log(policy_dist + 1e-8) * policy_dist).sum()
-    # reward, done = environment_step(action=action.item())
-    return log_prob, entropy, action_IND_to_STR(action.item())
-
 
 # =======================Save Models======================== #
 def save_models(iteration):
@@ -100,23 +79,10 @@ def single_loop(env, validation=False):
     entropy_term = torch.tensor(0.).to(DEVICE)
 
     # speaker model processes instruction based on baseline specification
-    if flags['comm_type'] == 'fixed':
-        speaker_out = comm_channel.fixed()
-    elif flags['comm_type'] == 'random':
-        speaker_out = comm_channel.random()
-    elif flags['comm_type'] == 'perfect':
-        speaker_out = comm_channel.perfect(concept_representation=concept_representation)
-    elif flags['comm_type'] == 'oracle':
-        pass
-    else:  # simple speaker
-        speaker_concept_input = torch.tensor(concept_representation[:12],
-                                             dtype=torch.float32).unsqueeze(0).to(DEVICE)
-        speaker_out, _, _ = all_vars['speaker_bot'](speaker_concept_input, validation=validation)
-        speaker_out = speaker_out.contiguous().view(1, -1)
+    speaker_out = speaker_agent.transmit(concept=concept_representation, validation=validation)
 
     # time-steps
     for t in range(flags["episode_len"]):
-
         # grid input
         if flags["grid_input_type"] == "image":
             grid_representation = env.grid_image_input()  # [img_height, img_width, 3]
@@ -137,13 +103,6 @@ def single_loop(env, validation=False):
                                                                                       flags["grid_size"] ** 2,
                                                                                       grid_vector_size).to(DEVICE)
 
-        if flags["grid_input_type"] != "with_target":
-            grid_representation = all_vars['target_encoder'](speaker_out, grid_representation)
-        else:
-            grid_representation = \
-                grid_representation.contiguous().permute(2, 0, 1).unsqueeze(0)  # [1, 18, 4, 4]
-        listener_state = all_vars['grid_encoder'](grid_representation)
-
         # render each step of the episode
         if flags['render_episode']:
             env.render_episode(mission=instruction,
@@ -155,7 +114,7 @@ def single_loop(env, validation=False):
                                save_fig=False)
 
         # action by policy
-        log_prob, entropy, action = policy_gradient(listener_state)
+        log_prob, entropy, action = listener_agent.act(state=(grid_representation, speaker_out), validate=validation)
 
         # reward at each time-step;
         # done flag indicates whether the task was completed
@@ -230,8 +189,6 @@ def main():
         # ==================== Train =================== #
         if flags['use_comm_channel'] is True:
             all_vars['speaker_bot'].train(True)
-        all_vars['target_encoder'].train(True)
-        all_vars['grid_encoder'].train(True)
         all_vars['listener_bot'].train(True)
         all_vars['optimizer'].zero_grad()
         # run a single training loop
@@ -247,8 +204,6 @@ def main():
             num_val_iter = 30  # number of validation loops/episodes to be run
             if flags['use_comm_channel'] is True:
                 all_vars['speaker_bot'].eval()
-            all_vars['target_encoder'].eval()
-            all_vars['grid_encoder'].eval()
             all_vars['listener_bot'].eval()
             with torch.no_grad():
                 for _ in range(num_val_iter):
@@ -278,32 +233,24 @@ if __name__ == "__main__":
     # =================initialize model params and environment============== #
 
     # ================== Listener-Bot ====================== #
-    target_encoder = TargetEncoder(grid_size=flags['grid_size'], num_msgs=num_msgs, message_len=msg_len).to(DEVICE)
-    grid_encoder = GridEncoder(in_channels=18, out_channels=20).to(DEVICE)
-    listener_bot = ListenerBot(input_dim=320, hidden_dim1=150, hidden_dim2=30, num_actions=num_actions).to(DEVICE)
+    oracle = True if flags['comm_type'] == 'oracle' else False
+    listener_bot = ListenerBot(grid_size=flags['grid_size'], num_msgs=num_msgs, msg_len=msg_len,
+                               input_dim=320, hidden_dim1=150, hidden_dim2=30, num_actions=num_actions,
+                               oracle=oracle).to(DEVICE)
     listener_agent = ListenerAgent(listener_model=listener_bot)
-    comm_channel = CommChannel(msg_len=msg_len, num_msgs=num_msgs, comm_type=flags['comm_type'],
-                               temp=None, device=DEVICE)
-
-    all_params = list(grid_encoder.parameters()) + \
-                 list(target_encoder.parameters()) + \
-                 list(listener_agent.listener_model.parameters())
 
     # ================== Speaker-Bot ====================== #
-    if flags['use_comm_channel'] is True:
-        speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=4,
-                                 output_size=msg_len, num_msgs=num_msgs, temp=flags['temp'], device=DEVICE).to(DEVICE)
+    speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=4,
+                             output_size=msg_len, num_msgs=num_msgs, device=DEVICE).to(DEVICE)
+    speaker_agent = SpeakerAgent(num_msgs=num_msgs, msg_len=msg_len, comm_type=flags['comm_type'],
+                                 temp=flags['temp'], speaker_model=speaker_bot, device=DEVICE)
 
-        speaker_agent = SpeakerAgent(speaker_model=speaker_bot)
-        all_params.extend(list(speaker_agent.speaker_model.parameters()))
+    all_params = list(listener_agent.listener_model.parameters())
+    if flags['use_comm_channel'] is True:
+        all_params += list(speaker_agent.speaker_model.parameters())
 
     optimizer = optim.Adam(all_params, lr=4e-4)
-
-    all_vars = {'target_encoder': target_encoder, 'grid_encoder': grid_encoder,
-                'listener_agent': listener_agent, 'optimizer': optimizer}
-    if flags['use_comm_channel'] is True:
-        all_vars['speaker_agent'] = speaker_agent
-
+    all_vars = {'listener_bot': listener_bot, 'speaker_bot': speaker_bot, 'optimizer': optimizer}
     main()
 
     log_file.close()

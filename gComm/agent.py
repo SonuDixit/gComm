@@ -1,11 +1,12 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions.relaxed_categorical import RelaxedOneHotCategorical
+from torch.distributions.relaxed_categorical import RelaxedOneHotCategorical, Categorical
 from torch.distributions.gumbel import Gumbel
+from gComm.helpers import action_IND_to_STR
+
 
 class Agent(ABC):
     """
@@ -17,8 +18,7 @@ class Agent(ABC):
     def on_reset(self):
         pass
 
-    @abstractmethod
-    def act(self, obs):
+    def act(self, state):
         """
         Propose an action based on observation.
         Returns a dict, with 'action` entry containing the proposed action,
@@ -27,92 +27,33 @@ class Agent(ABC):
         """
         pass
 
-    @abstractmethod
-    def transmit(self, concept, train=True):
+    def transmit(self, concept, validation=False):
         """
         Use the communication channel to communicate
         to the other agent (listener).
         """
         # if train: use communication channel
         # else:     use argmax
+
         pass
 
-    @abstractmethod
     def analyze_feedback(self, reward, done):
         pass
 
 
-# class CommChannel:
-#     """
-#     Communication channel:
-#     choices = ['continuous', 'binary', 'categorical', 'random', 'fixed']
-#     continuous: continuous messages
-#     discrete: binary/categorical messages
-#
-#     # baselines:
-#     random: noisy messages to distract the listening agent
-#     fixed: set of ones/zeros
-#
-#     :params
-#     num_messages: number of messages to be transmitted
-#     message_dim: dimension of each message
-#     num_agents: number of agents interacting with each other
-#     """
-#
-#     def __init__(self, num_messages, message_dim, choice, num_agents):
-#         self.num_messages = num_messages
-#         self.message_dim = message_dim
-#         self.choice = choice
-#         self.num_agents = num_agents
-#
-#     @staticmethod
-#     def categorical_softmax(probs, tau=1, hard=True, sample=False, dim=-1):
-#         cat_distr = RelaxedOneHotCategorical(tau, probs=probs)
-#         if sample:
-#             y_soft = cat_distr.sample()
-#         else:  # differentiable sample
-#             y_soft = cat_distr.rsample()
-#
-#         if hard:  # Straight-Through
-#             index = y_soft.max(dim, keepdim=True)[1]
-#             y_hard = torch.zeros_like(probs).scatter_(dim, index, 1.0)
-#             out = y_hard - y_soft.detach() + y_soft
-#         else:  # Re-parameterization trick
-#             out = y_soft
-#         return out
-#
-#     @staticmethod
-#     def binary_softmax(probs, tau=0.5, eps=1e-20, hard=True, sample=False):
-#         log_probs = torch.log(probs)
-#
-#         if sample:  # sample from Gumbel distribution
-#             u = torch.rand(log_probs.size(), names='')
-#             u = -torch.log(-torch.log(u + eps) + eps)
-#             y = log_probs + u
-#         else:
-#             y = log_probs
-#
-#         y_gumbel = torch.softmax(y / tau, dim=-1)
-#         y_hat, ind = y_gumbel.max(dim=-1)
-#
-#         if hard:
-#             y_hard = ind.float()
-#             out = (y_hard - y_hat).detach() + y_hat
-#             return out
-#         else:
-#             return y_hat
-#
-#     def forward(self, probs):
-#         for i in range(self.num_messages):
-#             if self.choice == 'categorical':
-#                 pass
-
 class CommChannel:
     """
-    xyz
+    Communication Channel (refer gComm paper for more info)
     """
 
     def __init__(self, msg_len, num_msgs, comm_type, temp, device):
+        """
+        num_msgs: number of messages transmitted by the speaker n_m (int)
+        msg_len: message length d_m (int)
+        comm_type: communication baseline (str) ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        temp: temperature parameter for discrete messages (float)
+        device: torch.device("cpu") / torch.device("cuda")
+        """
         self.msg_len = msg_len
         self.num_msgs = num_msgs
         self.comm_type = comm_type
@@ -141,18 +82,15 @@ class CommChannel:
         ret = (y_hard.float() - y_soft).detach() + y_soft
         return ret
 
-    def one_hot(self, probs, sample=False, dim=-1):
+    def one_hot(self, probs, dim=-1):
         """
         generates one-hot messages using sampling probabilities
 
-        :param: sample: differentiable sample when True
         :param: probs: sampling probabilities [batch_size, msg_len]
         """
         cat_distr = RelaxedOneHotCategorical(self.temp, probs=probs)
-        if sample:
-            y_soft = cat_distr.sample()
-        else:  # differentiable sample
-            y_soft = cat_distr.rsample()
+        # differentiable sample
+        y_soft = cat_distr.rsample()
 
         # Straight-Through Trick
         index = y_soft.max(dim, keepdim=True)[1]
@@ -161,23 +99,23 @@ class CommChannel:
         return ret
 
     def random(self):
-        '''
-        communicate random values
-        '''
+        """
+        communicate random messages
+        """
         message = torch.randn(1, (self.num_msgs * self.msg_len), dtype=torch.float32).to(self.device)
         return message
 
     def fixed(self):
-        '''
-        communicate fixed values
-        '''
+        """
+        communicate fixed messages (ones)
+        """
         message = torch.ones(1, (self.num_msgs * self.msg_len), dtype=torch.float32).to(self.device)
         return message
 
     def perfect(self, concept_representation):
-        '''
-        @concept_representation :
-        '''
+        """
+        @concept_representation: [1 2 3 4 square cylinder circle diamond r b y g light heavy walk push pull pickup]
+        """
         message = np.zeros(12, dtype=np.float32)
         message[:8] = concept_representation[4:12]  # size, color
         message[-4:] = concept_representation[-4:]  # task
@@ -185,8 +123,74 @@ class CommChannel:
         return message
 
     def oracle(self):
-        '''
-        we don't need this function
-        '''
+        """
+        Oracle is implemented on the listener's end
+        """
         pass
 
+
+class SpeakerAgent(Agent):
+    def __init__(self, num_msgs, msg_len, temp=1.0, speaker_model=None, comm_type=None, device=None):
+        """
+        num_msgs: number of messages transmitted by the speaker n_m (int)
+        msg_len: message length d_m (int)
+        temp: temperature parameter for discrete messages (float)
+        speaker_model: user-defined model, pass a nn.module object for speaker
+        comm_type: communication baseline (str) ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        device: torch.device("cpu") / torch.device("cuda")
+        """
+        assert comm_type in ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        self.comm_type = comm_type
+
+        if comm_type == 'categorical' or comm_type == 'binary':
+            self.speaker_model = speaker_model
+        assert device is not None, 'pass the device type'
+        self.comm = CommChannel(msg_len=msg_len, num_msgs=num_msgs,
+                                comm_type=comm_type, temp=temp, device=device)
+        self.device = device
+
+    def transmit(self, concept=None, validation=False):
+        if self.comm_type == 'random':
+            return self.comm.random()
+        elif self.comm_type == 'fixed':
+            return self.comm.fixed()
+        elif self.comm_type == 'perfect':
+            return self.comm.perfect(concept_representation=concept)
+        elif self.comm_type == 'oracle':
+            return None
+        else:
+            concept = torch.tensor(concept[:12], dtype=torch.float32).unsqueeze(0).to(self.device)
+            return self.speaker_model(data_input=concept, comm_channel=self.comm,
+                                      validation=validation).view(1, -1)
+
+    def act(self, state, validation=False):
+        raise Exception('Not a valid function for speaker')
+
+
+class ListenerAgent(Agent):
+    def __init__(self, listener_model):
+        """
+        pass a nn.module object for listener
+        """
+        self.listener_model = listener_model
+
+    def act(self, state, validate=False):
+        policy_logits = self.listener_model(grid_image=state[0], speaker_out=state[1])
+        policy_dist = torch.softmax(policy_logits, dim=-1)
+
+        if validate:
+            action = torch.argmax(policy_dist, dim=1)
+        else:
+            action = Categorical(probs=policy_dist).sample()
+
+        log_prob = Categorical(probs=policy_dist).log_prob(action)
+        entropy = -(torch.log(policy_dist + 1e-8) * policy_dist).sum()
+        return log_prob, entropy, action_IND_to_STR(action.item())
+
+    def transmit(self, concept, validation=False):
+        raise Exception('Not a valid function for listener')
+
+
+class Communication:
+    def __init__(self):
+        pass
