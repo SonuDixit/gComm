@@ -7,11 +7,18 @@ import torch.nn.functional as F
 class SpeakerBot(nn.Module):
     """
     Speaker has access to the 18-d concept input (size + shape + color + weight + task)
-    and transmits 'num_msgs' messages of length 'msg_len'
-    input_size: 18-d
+    and transmits 'num_msgs' (n_m) messages of length 'msg_len' (d_m)
     """
 
     def __init__(self, comm_type, input_size, hidden_size, output_size, num_msgs, device):
+        """
+        :comm_type: ['categorical', 'binary', 'continuous']
+        :input size: 18-d (concept representation)
+        :hidden_size: hidden size of RNN
+        :output_size: msg_len (d_m)
+        :num_msgs: num_msgs (n_m)
+        :device: cpu/gpu
+        """
         super().__init__()
         # model params
         self.comm_type = comm_type
@@ -142,13 +149,37 @@ class GridEncoder(nn.Module):
 class ListenerBot(nn.Module):
     """
     Uses the state (processed grid information from the grid encoder) for sequential decision making
+    > Steps:
+    1. Target Encoder processes the received messages and the current grid input
+    and generates a new grid representation containing the target and task specifics
+    2. Grid Encoder uses the new grid representation and convolves over each cell using 1*1 conv;
+    the output of the Grid Encoder is the state
+    3. Listener Action Layer uses the state to take actions
     """
 
-    def __init__(self, grid_size, num_msgs, msg_len, input_dim, hidden_dim1, hidden_dim2, num_actions, oracle=False):
+    def __init__(self, grid_size, num_msgs, msg_len, in_channels, out_channels,
+                 input_dim, hidden_dim1, hidden_dim2, num_actions, oracle=False):
+        """
+        > Target Encoder
+        :grid_size: 4 * 4 for baselines
+        :num_msgs: n_m
+        :msg_len: d_m
+        :oracle: implement Oracle Listener if True (sidestep Target Encoder)
+
+        > Grid Encoder
+        :in_channels: input channels of the grid encoder (input dim of processed grid representation)
+        :out_channels: out channels of the grid encoder
+
+        > Action layer
+        :input_dim: dim of flattened output of the grid encoder
+        :hidden_dim1: dim of the latent representation
+        :hidden_dim2: dim of the latent representation
+        :num_actions: size of action space (WALK task: 4, PUSH & PULL: 6)
+        """
         super().__init__()
-        self.grid_encoder = GridEncoder(in_channels=18, out_channels=20)
         if not oracle:
             self.target_encoder = TargetEncoder(grid_size=grid_size, num_msgs=num_msgs, message_len=msg_len)
+        self.grid_encoder = GridEncoder(in_channels=in_channels, out_channels=out_channels)
         self.oracle = oracle
 
         self.input_dim = input_dim

@@ -7,7 +7,6 @@ def Arguments():
     # ------------------------------- General arguments ------------------------------- #
 
     parser.add_argument('--output_directory', type=str, default='save_folder', help='save episodes')
-    parser.add_argument('--wait_time', type=float, default=0.3, help='wait time between consecutive time-steps')
 
     # ------------------------------- Environment arguments ------------------------------- #
 
@@ -65,13 +64,10 @@ def Arguments():
                              'with_target: vector representation with target specified)')
 
     # ------------------------------------ Communication Channel ----------------------------------------- #
-
-    parser.add_argument('--use_comm_channel', action='store_true', default=False,
-                        help='use communication channel or provide complete information to the Listener (Oracle)')
     parser.add_argument('--comm_type', type=str, default='categorical',
                         choices=['continuous', 'binary', 'categorical', 'random', 'fixed', 'perfect', 'oracle'])
     parser.add_argument('--comm_setting', type=str, default='cheap_talk',
-                        choices=['cheap_talk', 'costly_signalling'])
+                        choices=['cheap_talk', 'costly_signalling'], help='TODO: costly signalling')
     parser.add_argument('--temp', type=float, default=1, help='temperature parameter for discrete messages')
 
     # ------------------------------------ lights off feature ----------------------------------------- #
@@ -79,6 +75,8 @@ def Arguments():
 
     # ----------------------------------- visualisation -----------------------------------------------
     parser.add_argument('--render_episode', action='store_true', default=False, help='whether to render every step')
+    parser.add_argument('--wait_time', type=float, default=0.3, help='wait time between consecutive time-steps')
+
     return vars(parser.parse_args())
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from gComm.helpers import display_table
 
 
 def hamming_dist(concept1, concept2):
@@ -84,24 +85,23 @@ def topsim_metric(msg):
 
 
 if __name__ == "__main__":
-    # ================= Demos ================= #
-    # Demo 1
+    print('# ================== Demos ================== #')
+    # Demo 1: perfectly compositional
     messages = {('green', 'box'): 'aa', ('blue', 'box'): 'ba', ('green', 'circle'): 'ab', ('blue', 'circle'): 'bb'}
     c_p, c_s = topsim_metric(msg=messages)
-    print("c_p = {} , c_s = {}".format(c_p, c_s))  # perfectly compositional
+    display_table(messages=messages, protocol='perfectly compositional', corr=(c_p, c_s))
 
-    # Demo 2
+    # Demo 2: two different objects (concepts) map to the same set of messages
     messages = {('green', 'box'): 'ab', ('blue', 'box'): 'ba', ('green', 'circle'): 'ab', ('blue', 'circle'): 'bb'}
     c_p, c_s = topsim_metric(msg=messages)
-    print("c_p = {} , c_s = {}".format(c_p, c_s))  # two different objects (concepts) map to the same set of
-    # messages
+    display_table(messages=messages, protocol='surjective (not injective)', corr=(c_p, c_s))
 
-    # Demo 3
+    # Demo 3: holistic language (one-to-one mapping but not fully systematic)
     messages = {('green', 'box'): 'ba', ('blue', 'box'): 'aa', ('green', 'circle'): 'ab', ('blue', 'circle'): 'bb'}
     c_p, c_s = topsim_metric(msg=messages)
-    print("c_p = {} , c_s = {}".format(c_p, c_s))  # one-to-one mapping but not fully systematic (holistic language)
+    display_table(messages=messages, protocol='holistic', corr=(c_p, c_s))
 
-    # Demo 3
+    # Demo 3: ambiguous language
     messages = {('green', 'box'): 'aa', ('blue', 'box'): 'aa', ('green', 'circle'): 'aa', ('blue', 'circle'): 'aa'}
     c_p, c_s = topsim_metric(msg=messages)
-    print("c_p = {} , c_s = {}".format(c_p, c_s))  # ambiguous language
+    display_table(messages=messages, protocol='ambiguous language', corr=(c_p, c_s))

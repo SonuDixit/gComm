@@ -53,6 +53,7 @@ plot_path.mkdir(exist_ok=True, parents=True)
 log_file = open(path + "log.txt", "w")
 log_file.write(str(flags) + '\n')
 visualization_path = None
+save_model_flag = False
 
 
 # =======================Save Models======================== #
@@ -135,21 +136,21 @@ def single_loop(env, validation=False):
                                    verb_in_command=verb_in_command,
                                    save_path=visualization_path,
                                    save_fig=SAVE_FIG)
-            Qval = torch.tensor(0., device=DEVICE)
+            val = torch.tensor(0., device=DEVICE)
             break
 
     if validation:
         return np.array(rewards).sum()
 
     train_rewards = torch.tensor(rewards).to(DEVICE)
-    Qvals = []
+    vals = []
     for t in reversed(range(len(rewards))):
-        Qval = train_rewards[t] + GAMMA * Qval
-        Qvals.insert(0, Qval)
+        val = train_rewards[t] + GAMMA * val
+        vals.insert(0, val)
 
-    Qvals = torch.stack(Qvals)
+    vals = torch.stack(vals)
     log_probs = torch.stack(log_probs)
-    advantage = Qvals.detach()
+    advantage = vals.detach()
 
     agent_loss = (-log_probs * advantage.detach()).mean()
     net_loss = agent_loss - LAMBDA * entropy_term
@@ -187,7 +188,7 @@ def main():
     task_rewards = {"'walk'": []}
     for Episode_count in range(1, flags["num_episodes"] + 1):
         # ==================== Train =================== #
-        if flags['use_comm_channel'] is True:
+        if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
             all_vars['speaker_bot'].train(True)
         all_vars['listener_bot'].train(True)
         all_vars['optimizer'].zero_grad()
@@ -195,14 +196,12 @@ def main():
         net_loss, train_rewards = single_loop(env, validation=False)
         net_loss.backward()
         all_vars['optimizer'].step()
-        # print('episode: {} | train-reward: {} | train-loss: {}'.format(Episode_count,
-        #                                                                train_rewards[-1].item(), net_loss))
 
         # ==================== validation ====================== #
         if Episode_count % 500 == 0:
             val_rewards = 0
             num_val_iter = 30  # number of validation loops/episodes to be run
-            if flags['use_comm_channel'] is True:
+            if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
                 all_vars['speaker_bot'].eval()
             all_vars['listener_bot'].eval()
             with torch.no_grad():
@@ -215,13 +214,14 @@ def main():
         # ========================== Plot ============================= #
         if Episode_count % 2000 == 0 and Episode_count != 0:
             print('------------------Generating plots------------------------')
-            generate_task_progress(task_reward_dict=task_rewards, color='m', interval=100,
+            generate_task_progress(task_reward_dict=task_rewards, color='m',
                                    file_name=os.path.join(plot_path, 'task_progress.png'))
 
         # =====================save model====================== #
-        # if Episode_count % 2000 == 0:
-        #     print('------------------Saving model checkpoint------------------\n')
-        #     save_models(iteration=Episode_count)
+        if save_model_flag is True:
+            if Episode_count % 2000 == 0:
+                print('------------------Saving model checkpoint------------------\n')
+                save_models(iteration=Episode_count)
 
         log_file.write('Episode: ' + str(Episode_count) + ' | Train Reward: ' + str(train_rewards) +
                        ' | Train Loss: ' + str(net_loss) + "\n")
@@ -235,8 +235,8 @@ if __name__ == "__main__":
     # ================== Listener-Bot ====================== #
     oracle = True if flags['comm_type'] == 'oracle' else False
     listener_bot = ListenerBot(grid_size=flags['grid_size'], num_msgs=num_msgs, msg_len=msg_len,
-                               input_dim=320, hidden_dim1=150, hidden_dim2=30, num_actions=num_actions,
-                               oracle=oracle).to(DEVICE)
+                               in_channels=18, out_channels=20, input_dim=320, hidden_dim1=150,
+                               hidden_dim2=30, num_actions=num_actions, oracle=oracle).to(DEVICE)
     listener_agent = ListenerAgent(listener_model=listener_bot)
 
     # ================== Speaker-Bot ====================== #
@@ -246,11 +246,13 @@ if __name__ == "__main__":
                                  temp=flags['temp'], speaker_model=speaker_bot, device=DEVICE)
 
     all_params = list(listener_agent.listener_model.parameters())
-    if flags['use_comm_channel'] is True:
+    if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
         all_params += list(speaker_agent.speaker_model.parameters())
 
     optimizer = optim.Adam(all_params, lr=4e-4)
     all_vars = {'listener_bot': listener_bot, 'speaker_bot': speaker_bot, 'optimizer': optimizer}
+
+    print('\n=================== Baseline: {} ===================\n'.format(flags['comm_type'].upper()))
     main()
 
     log_file.close()

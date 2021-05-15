@@ -6,50 +6,57 @@
 gComm is a step towards developing a robust platform to foster research in grounded language acquisition in a more challenging and realistic setting. It comprises a 2-d grid environment with a set of agents (a stationary speaker and a mobile listener connected via a communication channel) exposed to a continuous array of tasks in a partially observable setting. The key to solving these tasks lies in agents developing linguistic abilities and utilizing them for efficiently exploring the environment. The speaker and listener have access to information provided in different modalities, i.e. the speaker's input is a natural language instruction that contains the target and task specifications and the listener's input is its grid-view. Each must rely on the other to complete the assigned task, however, the only way they can achieve the same, is to develop and use some form of communication. gComm provides several tools for studying different forms of communication and assessing their generalization.
 
 ## Table of contents
-* [General info](#general-info)
 * [Getting Started](#getting-started)
 * [Baselines](#baselines)
-* [Levels](#levels)
-* [Metrics](#metrics)
 * [Additional Features](#additional-features)
 * [Publications](#publications)
 
 This repository contains the code for the environment, including the baselines and metrics.
 
+<a name="getting-started"></a>
 ## Getting Started
-To run this project,
+To set up environment,
 
-```
+```console
 $ git clone https://github.com/SonuDixit/gComm.git
-$ python setup.py install
+$ python setup.py install  # install setuptools package before running this line
+$ cd gComm/
 ```
 
 ### Important Arguments
-Arguments can be found in the file: gComm/arguments.py
+Arguments can be found in the file: **gComm/arguments.py**
 
 * Environment arguments
-`grid_size`
-`min_other_objects`
-`max_objects`
+`--grid_size`
+`--min_other_objects`
+`--max_objects`
 
 * Grammar and Vocabulary arguments
-`type_grammar`
-`transitive_verbs`
-`nouns`
-`color_adjectives`
-`size_adjectives`
-`all_light`
-`keep_fixed_weights`
+`--type_grammar`
+`--transitive_verbs`
+`--nouns`
+`--color_adjectives`
+`--size_adjectives`
+`--all_light`
+`--keep_fixed_weights`
 
 * RL-framework
-`num_episodes`
-`episode_len`
-`grid_input_type`
+`--num_episodes`
+`--episode_len`
+`--grid_input_type`
 
 * Communication Channel
-`use_comm_channel`, `comm_type`
+`comm_type`
+
+* Rendering
+`--render_episode`
+```console
+$ python baselines.py --render_episode
+$ python baselines.py --render_episode --wait_time 0.6  # slower rendering (default: 0.3)
+```
 
 
+<a name="baselines"></a>
 ## Baselines
 | Task              | Baseline         | Convergence Rewards  |
 |:-----------------:|:----------------:|:--------------------:|
@@ -67,45 +74,111 @@ Arguments can be found in the file: gComm/arguments.py
 
 To run each baseline:
 
+* **Simple Speaker** (Categorical)
+```
+# walk
+$ python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type categorical
+
+# push and pull
+$ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type vector --all_light --num_episodes 400000 --episode_len 10 --comm_type categorical
+```
+
 * **Random Speaker**
 ```
-$ python  # walk
-$ python  # push and pull
+# walk
+$ python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 200000 --episode_len 10 --comm_type random
+
+# push and pull
+$ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type random
 ```
 * **Fixed Speaker**
 ```
-$ python  # walk
-$ python  # push and pull
+# walk
+$ python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 200000 --episode_len 10 --comm_type fixed
+
+# push and pull
+$ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type random
 ```
 * **Perfect Speaker**
 ```
-$ python  # walk
-$ python  # push and pull
+# walk
+$ python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 200000 --episode_len 10 --comm_type perfect
+
+# push and pull
+$ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type perfect
 ```
 * **Oracle Listener**
 ```
-$ python  # walk
-$ python  # push and pull
+# walk
+$ python baselines.py --type_grammar simple_intrans --grid_input_type with_target --all_light --num_episodes 200000 --episode_len 10 --comm_type oracle
+
+# push and pull
+$ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type with_target --all_light --num_episodes 300000 --episode_len 10 --comm_type oracle
+
 ```
 
-## Levels
+* Maze parameters
+`--obstacles_flag`
+`--num_obstacles`
+`--enable_maze`
+`--maze_complexity`
+`--maze_density`
+
+<a name="additional-features"></a>
+## Additional Features
+
+### 1. Levels
 <p align="center">
   <img src="https://user-images.githubusercontent.com/36856187/117788916-1f73bc00-b248-11eb-8484-e810a6d88591.png" width="300" alt="obstacles-grid"/>
   ⋅⋅⋅⋅⋅⋅
   <img src="https://user-images.githubusercontent.com/36856187/117788200-74630280-b247-11eb-9018-4b03a6c6ab76.png" width="300" height="375" alt="maze-grid"/>
 </p>
 
-* Maze parameters
-`obstacles_flag`
-`num_obstacles`
-`enable_maze`
-`maze_complexity`
-`maze_density`
+### 2. Lights Out
+```
+$ python baselines.py --lights_out
+$ python baselines.py --lights_out --render_episode  # for rendering
+```
 
-## Lights Out
+### 3. Metrics
+* **topsim**: measure compositionality of messages 
+```
+$ python topsim.py
 
-Set `lights_out` argument to True
+ ============ protocol: perfectly compositional =============
+Concept         Messages  
+green box       aa        
+blue box        ba        
+green circle    ab        
+blue circle     bb        
+c_p = 1.0 , c_s = 1.0
 
+ ============ protocol: surjective (not injective) =============
+Concept         Messages  
+green box       ab        
+blue box        ba        
+green circle    ab        
+blue circle     bb        
+c_p = 0.6793662204867574 , c_s = 0.694022093788567
+
+ ============ protocol: holistic =============
+Concept         Messages  
+green box       ba        
+blue box        aa        
+green circle    ab        
+blue circle     bb        
+c_p = 0.5 , c_s = 0.5
+
+ ============ protocol: ambiguous language =============
+Concept         Messages  
+green box       aa        
+blue box        aa        
+green circle    aa        
+blue circle     aa        
+c_p = 0.3651483716701107 , c_s = 0.36514837167011077
+```
+
+<a name="publication"></a>
 ## Publications
 [1] Rishi Hazra and Sonu Dixit, 2021. ["gComm: An environment for investigating generalization in Grounded Language Acquisition"](https://arxiv.org/pdf/2105.03943.pdf). In NAACL 2021 Workshop: ViGIL.
 

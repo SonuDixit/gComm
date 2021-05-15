@@ -50,7 +50,8 @@ class CommChannel:
         """
         num_msgs: number of messages transmitted by the speaker n_m (int)
         msg_len: message length d_m (int)
-        comm_type: communication baseline (str) ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        comm_type: communication baseline (str) ['categorical', 'binary', 'continuous',
+        random', 'fixed', 'perfect', 'oracle']
         temp: temperature parameter for discrete messages (float)
         device: torch.device("cpu") / torch.device("cuda")
         """
@@ -89,8 +90,7 @@ class CommChannel:
         :param: probs: sampling probabilities [batch_size, msg_len]
         """
         cat_distr = RelaxedOneHotCategorical(self.temp, probs=probs)
-        # differentiable sample
-        y_soft = cat_distr.rsample()
+        y_soft = cat_distr.rsample()  # differentiable sample
 
         # Straight-Through Trick
         index = y_soft.max(dim, keepdim=True)[1]
@@ -136,13 +136,14 @@ class SpeakerAgent(Agent):
         msg_len: message length d_m (int)
         temp: temperature parameter for discrete messages (float)
         speaker_model: user-defined model, pass a nn.module object for speaker
-        comm_type: communication baseline (str) ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        comm_type: communication baseline (str) ['categorical', 'binary', 'continuous',
+        random', 'fixed', 'perfect', 'oracle']
         device: torch.device("cpu") / torch.device("cuda")
         """
-        assert comm_type in ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle']
+        assert comm_type in ['categorical', 'binary', 'random', 'fixed', 'perfect', 'oracle', 'continuous']
         self.comm_type = comm_type
 
-        if comm_type == 'categorical' or comm_type == 'binary':
+        if comm_type in ['categorical', 'binary', 'continuous']:
             self.speaker_model = speaker_model
         assert device is not None, 'pass the device type'
         self.comm = CommChannel(msg_len=msg_len, num_msgs=num_msgs,
@@ -175,6 +176,10 @@ class ListenerAgent(Agent):
         self.listener_model = listener_model
 
     def act(self, state, validate=False):
+        """
+        :state: tuple(grid_image, received_messages)
+        :validate: if True use argmax(.), if False use sampling
+        """
         policy_logits = self.listener_model(grid_image=state[0], speaker_out=state[1])
         policy_dist = torch.softmax(policy_logits, dim=-1)
 
