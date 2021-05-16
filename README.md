@@ -23,6 +23,11 @@ $ git clone https://github.com/SonuDixit/gComm.git
 $ python setup.py install  # install setuptools package before running this line
 $ cd gComm/
 ```
+Run the following to see if the env works.
+```
+$ python test_package.py  
+```
+Input actions manually: <'left', 'right', 'forward', 'backward', 'push', 'pull', 'pickup', 'drop'>
 
 ### Important Arguments
 Arguments can be found in the file: **gComm/arguments.py**
@@ -121,8 +126,9 @@ $ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull -
 ## Demos
 <p align="center">
   <img src="https://user-images.githubusercontent.com/36856187/118398805-846d4e80-b65a-11eb-9a40-c281905cb84d.gif" width="300" alt="walk-demo"/>
-  <img src="https://user-images.githubusercontent.com/36856187/118398843-a070f000-b65a-11eb-8406-a80c4f8e3ff1.gif" width="300" height="375" alt="maze-grid"/>
-  <img src="!https://user-images.githubusercontent.com/36856187/118398896-da41f680-b65a-11eb-9a16-6fe2587d5317.gif" width="300" height="375" alt="maze-grid"/>
+  <img src="https://user-images.githubusercontent.com/36856187/118398843-a070f000-b65a-11eb-8406-a80c4f8e3ff1.gif" width="300" alt="push-demo"/>
+  <img src="https://user-images.githubusercontent.com/36856187/118398896-da41f680-b65a-11eb-9a16-6fe2587d5317.gif" width="300" alt="pull-demo"/>
+  <figcaption><pre> 1. WALK ; 2. PUSH; 3. PULL </pre> </figcaption>
 </p>
 
 
@@ -142,6 +148,13 @@ $ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull -
 `--enable_maze`
 `--maze_complexity`
 `--maze_density`
+
+```
+$  python baselines.py --enable_maze --maze_complexity 0.3 --maze_density 0.3 --render_episode 
+
+# test on a bigger grid
+$ python test_package.py --enable_maze --maze_density 0.3 --maze_complexity 0.3 --grid_size 8 --max_objects 12 --render_episode
+```
 
 ### 2. Lights Out
 ```
