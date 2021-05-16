@@ -60,13 +60,13 @@ $ python baselines.py --render_episode --wait_time 0.6  # slower rendering (defa
 ## Baselines
 | Task              | Baseline         | Convergence Rewards  |
 |:-----------------:|:----------------:|:--------------------:|
-|                   | Simple Speaker   |   0.80               |
+|                   | Simple Speaker   |   0.70               |
 |                   | Random Speaker   |   0.40               |
 |  **Walk**         | Fixed Speaker    |   0.43               |
 |                   | Perfect Speaker  |   0.95               |
 |                   | Oracle Listener  |   0.99               |
 |                   |                  |                      |
-|                   | Simple Speaker   |   0.70               |
+|                   | Simple Speaker   |   0.55               |
 |                   | Random Speaker   |   0.19               |
 |**Push** & **Pull**| Fixed Speaker    |   0.15               |
 |                   | Perfect Speaker  |   0.85               |
