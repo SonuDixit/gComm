@@ -1,5 +1,6 @@
 from abc import ABC
 
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -145,6 +146,8 @@ class SpeakerAgent(Agent):
 
         if comm_type in ['categorical', 'binary', 'continuous']:
             self.speaker_model = speaker_model
+        else:
+            self.speaker_model = None
         assert device is not None, 'pass the device type'
         self.comm = CommChannel(msg_len=msg_len, num_msgs=num_msgs,
                                 comm_type=comm_type, temp=temp, device=device)
@@ -167,6 +170,24 @@ class SpeakerAgent(Agent):
     def act(self, state, validation=False):
         raise Exception('Not a valid function for speaker')
 
+    def train(self, flag=True):
+        if self.speaker_model is not None:
+            self.speaker_model.train(flag)
+
+    def eval(self):
+        if self.speaker_model is not None:
+            self.speaker_model.eval()
+
+    def save(self, model_save_path, iteration):
+        if self.speaker_model is not None:
+            with open(os.path.join(model_save_path, str(iteration) + '_' + 'speaker_model'), 'wb') as f:
+                torch.save(self.speaker_model.state_dict(), f)
+
+    def load(self, model_weight_path, iteration):
+        if self.speaker_model is not None:
+            weights = os.path.join(model_weight_path, str(iteration) + '_' + 'speaker_model')
+            self.speaker_model.load_state_dict(torch.load(weights))
+            self.speaker_model.eval()
 
 class ListenerAgent(Agent):
     def __init__(self, listener_model):
@@ -194,6 +215,22 @@ class ListenerAgent(Agent):
 
     def transmit(self, concept, validation=False):
         raise Exception('Not a valid function for listener')
+
+    def train(self, flag=True):
+        self.listener_model.train(flag)
+
+    def eval(self):
+        self.listener_model.eval()
+
+    def save(self, model_save_path, iteration):
+        with open(os.path.join(model_save_path, str(iteration) + '_' + 'listener_model'), 'wb') as f:
+            torch.save(self.listener_model.state_dict(), f)
+
+    def load(self, model_weight_path, iteration):
+        weights = os.path.join(model_weight_path, str(iteration) + '_' + 'listener_model')
+        self.listener_model.load_state_dict(torch.load(weights))
+        self.listener_model.eval()
+
 
 
 class Communication:

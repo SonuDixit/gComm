@@ -3,4 +3,5 @@
 __pycache__
 dist
 gComm.egg-info
-
+gComm/__pycache__/
+gComm/mazegrid_base/__pycache__/

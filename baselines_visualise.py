@@ -17,7 +17,6 @@ from gComm.arguments import Arguments
 from gComm.gComm_env import gCommEnv
 from baseline_models import SpeakerBot, ListenerBot
 from gComm.agent import SpeakerAgent, ListenerAgent
-from gComm.helpers import generate_task_progress
 
 import os
 from pathlib import Path
@@ -44,25 +43,19 @@ if flags['type_grammar'] == 'simple_trans':
     num_actions += len(flags['transitive_verbs'].split(','))
 
 # ======================= Data storage paths ========================== #
-run_id = 2
+run_id = 1
 path = os.path.join(os.getcwd(), flags['comm_type'] + "_speaker_data/") + "run_" + str(run_id) + "/"
-model_load_path = Path(path + "checkpoint_dir")
-plot_path = Path(path + "plots")
-model_load_path.mkdir(exist_ok=True, parents=True)
-plot_path.mkdir(exist_ok=True, parents=True)
-log_file = open(path + "log.txt", "w")
-log_file.write(str(flags) + '\n')
+model_load_path = os.path.join(path , "checkpoint_dir")
 
-
-visualization_path = Path(path+'visual') # string name of folder : 'test_time'
-SAVE_FIG = False  # save test episodes?
-save_model_flag = True
+visual_path = os.path.join(path, 'visual') # string name of folder : 'test_time'
+SAVE_FIG = True  # save test episodes?
 LOAD_AND_VISUAL = False
-speaker_weight_itr = 70000
-listener_weight_itr = 70000
+speaker_weight_itr = 76000
+listener_weight_itr = 76000
 
-# if SAVE_FIG:
-#     os.makedirs(visual_path)
+if SAVE_FIG:
+    if not os.path.exists(visual_path):
+        os.makedirs(visual_path)
 
 # =======================Save Models======================== #
 def save_models(iteration):
@@ -71,8 +64,7 @@ def save_models(iteration):
     all_vars['listener_agent'].save(model_load_path, iteration)
 
 
-
-def single_loop(env, validation=False):
+def single_loop(env, validation=True, episode_save_path=None):
     instruction, verb_in_command = env.generate_world(
         other_objects_sample_percentage=flags['other_objects_sample_percentage'],
         max_other_objects=flags['max_objects'],
@@ -113,14 +105,14 @@ def single_loop(env, validation=False):
                                                                                       grid_vector_size).to(DEVICE)
 
         # render each step of the episode
-        if flags['render_episode']:
-            env.render_episode(mission=instruction,
-                               countdown=(flags["episode_len"] - t),
-                               actions=actions,
-                               weight=weight,
-                               verb_in_command=verb_in_command,
-                               save_path=visualization_path,
-                               save_fig=False)
+        # if flags['render_episode']:
+        env.render_episode(mission=instruction,
+                           countdown=(flags["episode_len"] - t),
+                           actions=actions,
+                           weight=weight,
+                           verb_in_command=verb_in_command,
+                           save_path=episode_save_path,
+                           save_fig=True)
 
         # action by policy
         log_prob, entropy, action = listener_agent.act(state=(grid_representation, speaker_out), validate=validation)
@@ -136,14 +128,14 @@ def single_loop(env, validation=False):
 
         if done:
             # render each step of the episode
-            if flags['render_episode']:
-                env.render_episode(mission=instruction,
-                                   countdown=(flags["episode_len"] - t - 1),
-                                   actions=actions,
-                                   weight=weight,
-                                   verb_in_command=verb_in_command,
-                                   save_path=visualization_path,
-                                   save_fig=SAVE_FIG)
+            # if flags['render_episode']:
+            env.render_episode(mission=instruction,
+                               countdown=(flags["episode_len"] - t - 1),
+                               actions=actions,
+                               weight=weight,
+                               verb_in_command=verb_in_command,
+                               save_path=episode_save_path,
+                               save_fig=True)
             val = torch.tensor(0., device=DEVICE)
             break
 
@@ -166,12 +158,6 @@ def single_loop(env, validation=False):
 
 
 def main():
-    # Create directory for visualizations if it doesn't exist.
-    flags['output_directory'] = os.path.join(os.getcwd(), flags['output_directory'])
-    if flags['output_directory']:
-        visualization_path = flags['output_directory']
-        if not os.path.exists(visualization_path):
-            os.mkdir(visualization_path)
 
     # initializing the vocabulary
     intransitive_verbs = flags["intransitive_verbs"].split(',')
@@ -192,50 +178,21 @@ def main():
         keep_fixed_weights=flags["keep_fixed_weights"], all_light=flags['all_light'],
         episode_len=flags["episode_len"], wait=flags['wait_time'])
 
-    # generating episodes
-    task_rewards = {"'walk'": []}
-    for Episode_count in range(1, flags["num_episodes"] + 1):
-        # ==================== Train =================== #
+
+    test_episodes = 10
+    val_rewards = 0
+    for Episode_count in range(1, test_episodes + 1):
         if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
-            all_vars['speaker_agent'].train(True)
-        all_vars['listener_agent'].train(True)
-        all_vars['optimizer'].zero_grad()
-        # run a single training loop
-        net_loss, train_rewards = single_loop(env, validation=False)
-        net_loss.backward()
-        all_vars['optimizer'].step()
+            all_vars['speaker_agent'].eval()
+        all_vars['listener_agent'].eval()
+        episode_save_path = os.path.join(visual_path,'example_'+str(Episode_count))
+        if not os.path.exists(episode_save_path):
+            os.makedirs(episode_save_path)
+        with torch.no_grad():
+            val_reward = single_loop(env, validation=True, episode_save_path=episode_save_path)
+            val_rewards += val_reward
 
-        # ==================== validation ====================== #
-        if Episode_count % 500 == 0:
-            val_rewards = 0
-            num_val_iter = 30  # number of validation loops/episodes to be run
-            if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
-                all_vars['speaker_agent'].eval()
-            all_vars['listener_agent'].eval()
-            with torch.no_grad():
-                for _ in range(num_val_iter):
-                    val_reward = single_loop(env, validation=True)
-                    val_rewards += val_reward
-            print('episode: {} | val-reward: {}'.format(Episode_count, val_rewards/num_val_iter))
-            task_rewards["'walk'"].extend([val_rewards])
-
-        # ========================== Plot ============================= #
-        if Episode_count % 2000 == 0 and Episode_count != 0:
-            print('------------------Generating plots------------------------')
-            generate_task_progress(task_reward_dict=task_rewards, color='m',
-                                   file_name=os.path.join(plot_path, 'task_progress.png'))
-
-        # =====================save model====================== #
-        if save_model_flag:
-            if Episode_count % 4000 == 0:
-                print('------------------Saving model checkpoint------------------\n')
-                save_models(iteration=Episode_count)
-
-        log_file.write('Episode: ' + str(Episode_count) + ' | Train Reward: ' + str(train_rewards) +
-                       ' | Train Loss: ' + str(net_loss) + "\n")
-
-        log_file.flush()
-
+    print('val-reward: {}'.format(val_rewards/test_episodes))
 
 if __name__ == "__main__":
     # =================initialize model params and environment============== #
@@ -246,6 +203,7 @@ if __name__ == "__main__":
                                in_channels=18, out_channels=20, input_dim=320, hidden_dim1=150,
                                hidden_dim2=30, num_actions=num_actions, oracle=oracle).to(DEVICE)
     listener_agent = ListenerAgent(listener_model=listener_bot)
+    listener_agent.load(model_weight_path=model_load_path, iteration=listener_weight_itr)
 
     # ================== Speaker-Bot ====================== #
     speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=4,
@@ -256,11 +214,13 @@ if __name__ == "__main__":
     all_params = list(listener_agent.listener_model.parameters())
     if flags['comm_type'] in ['categorical', 'continuous', 'binary']:
         all_params += list(speaker_agent.speaker_model.parameters())
+        speaker_agent.load(model_weight_path=model_load_path, iteration = speaker_weight_itr)
+        # load weights
 
-    optimizer = optim.Adam(all_params, lr=4e-4)
-    all_vars = {'listener_agent': listener_agent, 'speaker_agent': speaker_agent, 'optimizer': optimizer}
+    all_vars = {'listener_agent': listener_agent, 'speaker_agent': speaker_agent}
 
-    print('\n=================== Baseline: {} ===================\n'.format(flags['comm_type'].upper()))
+
+
+    print('\n=================== Saving: {} ===================\n'.format(flags['comm_type'].upper()))
     main()
 
-    log_file.close()

@@ -805,7 +805,8 @@ class World(MiniGridEnv):
     def render_situation(self, mission='', save_path=None, save_fig=False,
                          weight='light', actions='', countdown=''):
         if save_fig:
-            file_save_path = os.path.join(save_path, 'mission_{}, step_{:02d}.png'.format(mission, self.step_count))
+            # file_save_path = os.path.join(save_path, 'mission_{}, step_{:02d}.png'.format(mission, self.step_count))
+            file_save_path = os.path.join(save_path, 'step_{:02d}.png'.format(self.step_count))
             image = self.render(mode="human", mission=mission, actions=actions,
                                 weight=weight, countdown=countdown).getFullScreen(file_save_path=file_save_path)
         else:
