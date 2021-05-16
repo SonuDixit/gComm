@@ -8,6 +8,7 @@ gComm is a step towards developing a robust platform to foster research in groun
 ## Table of contents
 * [Getting Started](#getting-started)
 * [Baselines](#baselines)
+* [Demos](#demos)
 * [Additional Features](#additional-features)
 * [Publications](#publications)
 
@@ -114,8 +115,26 @@ $ python baselines.py --type_grammar simple_intrans --grid_input_type with_targe
 
 # push and pull
 $ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull --min_other_objects 2 --max_objects 2 --grid_input_type with_target --all_light --num_episodes 300000 --episode_len 10 --comm_type oracle
-
 ```
+
+<a name="demos"></a>
+## Demos
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/36856187/118398805-846d4e80-b65a-11eb-9a40-c281905cb84d.gif" width="300" alt="walk-demo"/>
+  <img src="https://user-images.githubusercontent.com/36856187/118398843-a070f000-b65a-11eb-8406-a80c4f8e3ff1.gif" width="300" height="375" alt="maze-grid"/>
+  <img src="!https://user-images.githubusercontent.com/36856187/118398896-da41f680-b65a-11eb-9a16-6fe2587d5317.gif" width="300" height="375" alt="maze-grid"/>
+</p>
+
+
+<a name="additional-features"></a>
+## Additional Features
+
+### 1. Levels: mazes and obstacles
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/36856187/117788916-1f73bc00-b248-11eb-8484-e810a6d88591.png" width="300" alt="obstacles-grid"/>
+  ⋅⋅⋅⋅⋅⋅
+  <img src="https://user-images.githubusercontent.com/36856187/117788200-74630280-b247-11eb-9018-4b03a6c6ab76.png" width="300" height="375" alt="maze-grid"/>
+</p>
 
 * Maze parameters
 `--obstacles_flag`
@@ -123,16 +142,6 @@ $ python baselines.py --type_grammar simple_trans --transitive_verbs push,pull -
 `--enable_maze`
 `--maze_complexity`
 `--maze_density`
-
-<a name="additional-features"></a>
-## Additional Features
-
-### 1. Levels
-<p align="center">
-  <img src="https://user-images.githubusercontent.com/36856187/117788916-1f73bc00-b248-11eb-8484-e810a6d88591.png" width="300" alt="obstacles-grid"/>
-  ⋅⋅⋅⋅⋅⋅
-  <img src="https://user-images.githubusercontent.com/36856187/117788200-74630280-b247-11eb-9018-4b03a6c6ab76.png" width="300" height="375" alt="maze-grid"/>
-</p>
 
 ### 2. Lights Out
 ```
