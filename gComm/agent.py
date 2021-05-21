@@ -98,6 +98,14 @@ class CommChannel:
         ret = y_hard - y_soft.detach() + y_soft
         return ret
 
+    def continuous(self, logits):
+        """
+        generates continuous messages
+
+        :param: logits: hidden state of speaker RNN
+        """
+        return logits
+
     def random(self):
         """
         communicate random messages

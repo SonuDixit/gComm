@@ -116,4 +116,4 @@ def display_table(messages: dict, protocol: str, corr: tuple):
     print("{:<15} {:<10}".format('Concept', 'Messages'))
     for k, v in messages.items():
         print("{:<15} {:<10}".format(' '.join(k), v))
-    print("c_p = {} , c_s = {}".format(corr[0], corr[1]))
+    print("pearson_corr = {} , spearman_corr = {}".format(corr[0], corr[1]))

@@ -30,7 +30,7 @@ class SpeakerBot(nn.Module):
 
         self.rnn_cell = nn.RNNCell(self.input_size, self.hidden_size)
 
-        if comm_type == 'categorical':
+        if comm_type == 'categorical' or comm_type == 'continuous':
             self.output_layer = nn.Linear(self.hidden_size, self.output_size)
         elif comm_type == 'binary':
             self.output_layer = nn.Linear(self.hidden_size, self.output_size * 2)
@@ -51,8 +51,11 @@ class SpeakerBot(nn.Module):
         log_probs = torch.tensor(0.).to(self.device)
 
         for ind in range(self.num_msgs):
-            # split_input = data_input[:, ind * 4: (ind + 1) * 4]
-            decoder_hidden = self.rnn_cell(data_input, decoder_hidden)
+            try:
+                decoder_hidden = self.rnn_cell(data_input, decoder_hidden)
+            except RuntimeError:
+                print('hi')
+
             logits = self.output_layer(decoder_hidden)
 
             if self.comm_type == 'categorical':
@@ -69,13 +72,13 @@ class SpeakerBot(nn.Module):
                 if not validation:
                     predict = comm_channel.binary(logits)
                 else:
-                    predict = torch.max(logits, dim=2)[1].to(self.device)
+                    predict = torch.max(logits, dim=2)[1].type(torch.float32).to(self.device)
                 for i in range(batch_size):
-                    probs[i, :] = binary_probs[i, :, :].gather(1, predict[i, :].view(-1, 1)).view(-1)
+                    probs[i] = binary_probs[i].gather(1, predict[i].view(-1, 1).type(torch.int64)).view(-1)
 
             elif self.comm_type == 'continuous':
                 probs = F.softmax(logits, dim=-1)
-                predict = logits
+                predict = comm_channel.continuous(logits)
 
             log_probs += torch.log((probs * predict).sum(dim=1)).squeeze(0)
             message.extend(predict)

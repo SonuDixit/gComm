@@ -173,7 +173,7 @@ green box       aa
 blue box        ba        
 green circle    ab        
 blue circle     bb        
-c_p = 1.0 , c_s = 1.0
+pearson_corr = 1.0 , spearman_corr = 1.0
 
  ============ protocol: surjective (not injective) =============
 Concept         Messages  
@@ -181,7 +181,7 @@ green box       ab
 blue box        ba        
 green circle    ab        
 blue circle     bb        
-c_p = 0.6793662204867574 , c_s = 0.694022093788567
+pearson_corr = 0.6793662204867574 , spearman_corr = 0.694022093788567
 
  ============ protocol: holistic =============
 Concept         Messages  
@@ -189,7 +189,7 @@ green box       ba
 blue box        aa        
 green circle    ab        
 blue circle     bb        
-c_p = 0.5 , c_s = 0.5
+pearson_corr = 0.5 , spearman_corr = 0.5
 
  ============ protocol: ambiguous language =============
 Concept         Messages  
@@ -197,8 +197,20 @@ green box       aa
 blue box        aa        
 green circle    aa        
 blue circle     aa        
-c_p = 0.3651483716701107 , c_s = 0.36514837167011077
+pearson_corr = 0.3651483716701107 , spearman_corr = 0.36514837167011077
 ```
+
+### 4. Other types of communication
+* Continuous Messages
+```
+$ python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type continuous
+```
+* Binary Messages
+```
+python baselines.py --type_grammar simple_intrans --grid_input_type vector --all_light --num_episodes 300000 --episode_len 10 --comm_type binary
+```
+
+
 
 <a name="publication"></a>
 ## Publications

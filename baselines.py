@@ -240,7 +240,8 @@ if __name__ == "__main__":
     listener_agent = ListenerAgent(listener_model=listener_bot)
 
     # ================== Speaker-Bot ====================== #
-    speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=4,
+    hidden_size = msg_len
+    speaker_bot = SpeakerBot(comm_type=flags['comm_type'], input_size=12, hidden_size=hidden_size,
                              output_size=msg_len, num_msgs=num_msgs, device=DEVICE).to(DEVICE)
     speaker_agent = SpeakerAgent(num_msgs=num_msgs, msg_len=msg_len, comm_type=flags['comm_type'],
                                  temp=flags['temp'], speaker_model=speaker_bot, device=DEVICE)
