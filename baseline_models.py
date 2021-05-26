@@ -51,11 +51,7 @@ class SpeakerBot(nn.Module):
         log_probs = torch.tensor(0.).to(self.device)
 
         for ind in range(self.num_msgs):
-            try:
-                decoder_hidden = self.rnn_cell(data_input, decoder_hidden)
-            except RuntimeError:
-                print('hi')
-
+            decoder_hidden = self.rnn_cell(data_input, decoder_hidden)
             logits = self.output_layer(decoder_hidden)
 
             if self.comm_type == 'categorical':
@@ -70,7 +66,7 @@ class SpeakerBot(nn.Module):
                 binary_probs = torch.softmax(logits, dim=-1)
                 probs = torch.zeros(batch_size, self.output_size).to(self.device)
                 if not validation:
-                    predict = comm_channel.binary(logits)
+                    predict, probs = comm_channel.binary(logits)
                 else:
                     predict = torch.max(logits, dim=2)[1].type(torch.float32).to(self.device)
                 for i in range(batch_size):
