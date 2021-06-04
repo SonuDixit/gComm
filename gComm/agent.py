@@ -81,7 +81,7 @@ class CommChannel:
         for i in range(y_soft.shape[0]):
             y_soft[i, :] = y_hat[i, :, :].gather(1, y_hard[i, :].view(-1, 1)).view(-1)
         ret = (y_hard.float() - y_soft).detach() + y_soft
-        return ret
+        return ret, y_soft
 
     def one_hot(self, probs, dim=-1):
         """
