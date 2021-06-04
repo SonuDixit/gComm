@@ -96,7 +96,7 @@ class CommChannel:
         index = y_soft.max(dim, keepdim=True)[1]
         y_hard = torch.zeros_like(y_soft, device=self.device).scatter_(dim, index, 1.0)
         ret = y_hard - y_soft.detach() + y_soft
-        return ret
+        return ret, y_soft
 
     def continuous(self, logits):
         """
