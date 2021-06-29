@@ -189,7 +189,7 @@ class ListenerAgent(Agent):
         :validate: if True use argmax(.), if False use sampling
         """
         policy_logits = self.listener_model(grid_image=state[0], speaker_out=state[1])
-        policy_dist = torch.softmax(policy_logits, dim=-1)
+        policy_dist = torch.softmax(policy_logits, dim=-1) + 1e-8
 
         if validate:
             action = torch.argmax(policy_dist, dim=1)
