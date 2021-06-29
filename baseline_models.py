@@ -59,7 +59,7 @@ class SpeakerBot(nn.Module):
                 if not validation:
                     predict, _ = comm_channel.one_hot(probs)
                 else:
-                    predict, _ = F.one_hot(torch.argmax(probs, dim=1), num_classes=self.output_size).float()
+                    predict = F.one_hot(torch.argmax(probs, dim=1), num_classes=self.output_size).float()
 
             elif self.comm_type == 'binary':
                 logits = logits.view(batch_size, self.output_size, -1)
