@@ -2,7 +2,7 @@ import argparse
 
 
 def Arguments():
-    parser = argparse.ArgumentParser(description="Grounded SCAN")
+    parser = argparse.ArgumentParser(description="gComm")
 
     # ------------------------------- General arguments ------------------------------- #
 
