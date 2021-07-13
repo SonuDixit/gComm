@@ -157,6 +157,10 @@ $ python test_package.py --enable_maze --maze_density 0.3 --maze_complexity 0.3 
 ```
 
 ### 2. Lights Out
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/36856187/125507774-bdc30eb6-8e51-4983-ae5e-e3e6b0abefa1.png" width="500" alt="lights-out"/>
+</p>
+
 ```
 $ python baselines.py --lights_out
 $ python baselines.py --lights_out --render_episode  # for rendering
