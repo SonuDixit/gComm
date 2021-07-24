@@ -23,18 +23,15 @@ def topo_sort(items, constraints):
         out.append(to_pop)
     return out
 
-
 def one_hot(size: int, idx: int) -> np.ndarray:
     one_hot_vector = np.zeros(size, dtype=int)
     one_hot_vector[idx] = 1
     return one_hot_vector
 
-
 def generate_possible_object_names(color: str, shape: str) -> List[str]:
     # TODO: does this still make sense when size is not small or large
     names = [shape, ' '.join([color, shape])]
     return names
-
 
 def generate_task_progress(task_reward_dict, color, file_name=None):
     fig = plt.figure()
@@ -49,7 +46,6 @@ def generate_task_progress(task_reward_dict, color, file_name=None):
         plt.savefig(file_name)
     plt.close(fig)
 
-
 def generate_task_frequency(task_freq_dict, file_name=None):
     fig = plt.figure()
     tasks = list(task_freq_dict.keys())
@@ -61,7 +57,6 @@ def generate_task_frequency(task_freq_dict, file_name=None):
     else:
         plt.savefig(file_name)
     plt.close(fig)
-
 
 def generate_actions_frequency(action_freq_dict, file_name=None):
     fig = plt.figure()
@@ -89,6 +84,29 @@ def plot_topsim(pearson, spearman, file_name=None):
         plt.savefig(file_name)
     plt.close(fig)
 
+def plot_d_loss_progress(net_d_loss, file_name=None):
+    fig = plt.figure()
+    x = np.arange(len(net_d_loss))
+    plt.plot(x, net_d_loss, label='d loss')
+    plt.legend()
+    plt.title('Discriminator Loss (Train)')
+    if file_name is None:
+        plt.savefig('d_loss_progress.png')
+    else:
+        plt.savefig(file_name)
+    plt.close(fig)
+
+def plot_influence_rewards(influence_rewards, file_name=None):
+    fig = plt.figure()
+    x = np.arange(len(influence_rewards))
+    plt.plot(x, influence_rewards, label='influence-rewards')
+    plt.legend()
+    plt.title('Speaker Abadoning Rewards')
+    if file_name is None:
+        plt.savefig('influence_rewards.png')
+    else:
+        plt.savefig(file_name)
+    plt.close(fig)
 
 def binary2dec(msg_seq):
     """
@@ -103,13 +121,11 @@ def binary2dec(msg_seq):
         concat += str(int(string, 2))
     return concat
 
-
 def action_IND_to_STR(action: int):
     actions_dict = {'left': 0, 'right': 1, 'forward': 2, 'backward': 3,
                     'push': 4, 'pull': 5, 'pickup': 6, 'drop': 7}
     inv_actions_dict = {v: k for k, v in actions_dict.items()}
     return inv_actions_dict[action]
-
 
 def display_table(messages: dict, protocol: str, corr: tuple):
     print('\n ============ protocol: {} ============='.format(protocol))
