@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # Demo 2: two different objects (concepts) map to the same set of messages
     messages = {('green', 'box'): 'ab', ('blue', 'box'): 'ba', ('green', 'circle'): 'ab', ('blue', 'circle'): 'bb'}
     c_p, c_s = topsim_metric(msg=messages)
-    display_table(messages=messages, protocol='surjective (not injective)', corr=(c_p, c_s))
+    display_table(messages=messages, protocol='non surjective and non injective', corr=(c_p, c_s))
 
     # Demo 3: holistic language (one-to-one mapping but not fully systematic)
     messages = {('green', 'box'): 'ba', ('blue', 'box'): 'aa', ('green', 'circle'): 'ab', ('blue', 'circle'): 'bb'}
