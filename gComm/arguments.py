@@ -42,7 +42,7 @@ def Arguments():
                         help='Comma-separated list of intransitive verbs.')
     parser.add_argument('--transitive_verbs', type=str, default='push,pull,pickup,drop',
                         help='Comma-separated list of transitive verbs. (also possible: push,pull,pickup,drop)')
-    parser.add_argument('--nouns', type=str, default='circle,square,cylinder,diamond', required=False,
+    parser.add_argument('--nouns', type=str, default='square,cylinder,circle,diamond', required=False,
                         help='Comma-separated list of nouns.')
     parser.add_argument('--color_adjectives', type=str, default='red,blue,yellow,green', required=False,
                         help='Comma-separated list of colors.')
