@@ -70,7 +70,7 @@ class SpeakerBot(nn.Module):
                 else:
                     predict = torch.max(logits, dim=2)[1].type(torch.float32).to(self.device)
                 for i in range(batch_size):
-                    probs[i] = binary_probs[i].gather(1, predict[i].view(-1, 1).type(torch.int64)).view(-1)
+                    probs[i] = binary_probs[i].gather(1, predict[i].view(-1, 1).dtype(torch.int64)).view(-1)
 
             elif self.comm_type == 'continuous':
                 probs = F.softmax(logits, dim=-1)
